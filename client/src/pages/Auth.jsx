@@ -3,46 +3,36 @@ import { BsRobot } from "react-icons/bs";
 import { IoSparkles } from "react-icons/io5";
 import { motion } from "motion/react"
 import { FcGoogle } from "react-icons/fc";
-import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 import { auth, provider } from '../utils/firebase';
 import axios from 'axios';
 import { ServerUrl } from '../App';
 import { useDispatch } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
+import { useNavigate } from 'react-router-dom';
 
 function Auth({isModel = false}) {
   const dispatch = useDispatch()
-
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then(async (response) => {
-        if (!response) return;
-        
-        let User = response.user;
-        let name = User.displayName;
-        let email = User.email;
-
-        const result = await axios.post(
-          ServerUrl + "/api/auth/google",
-          { name, email },
-          { withCredentials: true }
-        );
-
-        // Save token to localStorage
-        localStorage.setItem("token", result.data.token)
-        dispatch(setUserData(result.data));
-      })
-      .catch((error) => {
-        console.log("Auth error:", error);
-        dispatch(setUserData(null));
-      });
-  }, []);
+  const navigate = useNavigate()
 
   const handleGoogleAuth = async () => {
     try {
-      await signInWithRedirect(auth, provider);
+      const response = await signInWithPopup(auth, provider)
+      let User = response.user
+      let name = User.displayName
+      let email = User.email
+
+      const result = await axios.post(
+        ServerUrl + "/api/auth/google",
+        { name, email }
+      );
+
+      localStorage.setItem("token", result.data.token)
+      dispatch(setUserData(result.data))
+      navigate('/')
     } catch (error) {
-      console.log("Redirect error:", error);
+      console.log("Auth error:", error)
+      dispatch(setUserData(null))
     }
   }
 
