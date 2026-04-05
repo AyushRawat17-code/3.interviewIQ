@@ -3,7 +3,7 @@ import { BsRobot } from "react-icons/bs";
 import { IoSparkles } from "react-icons/io5";
 import { motion } from "motion/react"
 import { FcGoogle } from "react-icons/fc";
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, provider } from '../utils/firebase';
 import axios from 'axios';
 import { ServerUrl } from '../App';
@@ -13,11 +13,10 @@ import { setUserData } from '../redux/userSlice';
 function Auth({isModel = false}) {
   const dispatch = useDispatch()
 
-  // ✅ Catches the result AFTER Google redirects back to your site
   useEffect(() => {
     getRedirectResult(auth)
       .then(async (response) => {
-        if (!response) return; // no redirect in progress, ignore
+        if (!response) return;
         
         let User = response.user;
         let name = User.displayName;
@@ -28,6 +27,9 @@ function Auth({isModel = false}) {
           { name, email },
           { withCredentials: true }
         );
+
+        // Save token to localStorage
+        localStorage.setItem("token", result.data.token)
         dispatch(setUserData(result.data));
       })
       .catch((error) => {
@@ -36,13 +38,11 @@ function Auth({isModel = false}) {
       });
   }, []);
 
-  // ✅ Redirect instead of popup (works on deployed sites)
   const handleGoogleAuth = async () => {
     try {
       await signInWithRedirect(auth, provider);
     } catch (error) {
       console.log("Redirect error:", error);
-      dispatch(setUserData(null));
     }
   }
 
