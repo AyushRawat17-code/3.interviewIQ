@@ -13,10 +13,17 @@ import paymentRouter from "./routes/payment.route.js"
 
 const app = express()
 
+// ✅ Fix Cross-Origin-Opener-Policy
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  next();
+});
+
 app.use(cors({
   origin: [
     "https://three-interviewiq-client-lxpa.onrender.com",
-    "http://localhost:5173"  // for local development
+    "http://localhost:5173"
   ],
   credentials: true
 }))
