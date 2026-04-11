@@ -117,18 +117,41 @@ function Step2Interview({ interviewData, onFinish }) {
     }
   }, [currentIndex]);
 
+  // ✅ Fixed speech recognition with auto-restart
   useEffect(() => {
     if (!("webkitSpeechRecognition" in window)) return;
     const recognition = new window.webkitSpeechRecognition();
     recognition.lang = "en-US";
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
+
     recognition.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript;
-      setAnswer((prev) => prev + " " + transcript);
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+        setAnswer((prev) => prev + " " + finalTranscript);
+      }
     };
+
+    recognition.onend = () => {
+      if (isMicOn && !isAIPlaying) {
+        try { recognition.start(); } catch {}
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.log("Speech error:", event.error);
+      if (event.error === "no-speech" || event.error === "audio-capture") {
+        try { recognition.start(); } catch {}
+      }
+    };
+
     recognitionRef.current = recognition;
-  }, []);
+  }, [isMicOn, isAIPlaying]);
 
   const startMic = () => {
     if (recognitionRef.current && !isAIPlaying) {
@@ -150,14 +173,14 @@ function Step2Interview({ interviewData, onFinish }) {
     stopMic();
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem("token")  // ✅ get token
+      const token = localStorage.getItem("token")
       const result = await axios.post(ServerUrl + "/api/interview/submit-answer", {
         interviewId,
         questionIndex: currentIndex,
         answer,
         timeTaken: currentQuestion.timeLimit - timeLeft,
       }, {
-        headers: { Authorization: `Bearer ${token}` }  // ✅ send token
+        headers: { Authorization: `Bearer ${token}` }
       })
       setFeedback(result.data.feedback)
       speakText(result.data.feedback)
@@ -184,10 +207,10 @@ function Step2Interview({ interviewData, onFinish }) {
     stopMic();
     setIsMicOn(false);
     try {
-      const token = localStorage.getItem("token")  // ✅ get token
+      const token = localStorage.getItem("token")
       const result = await axios.post(ServerUrl + "/api/interview/finish",
         { interviewId },
-        { headers: { Authorization: `Bearer ${token}` } }  // ✅ send token
+        { headers: { Authorization: `Bearer ${token}` } }
       )
       console.log(result.data)
       onFinish(result.data)
